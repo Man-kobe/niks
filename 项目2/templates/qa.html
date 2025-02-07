@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>问答界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>AI 问答界面</h2>
+        <form method="post">
+            <label for="question">输入你的问题:</label>
+            <input type="text" id="question" name="question" required>
+            <button type="submit">提交</button>
+        </form>
+        {% if question %}
+        <div class="answer">
+            <h3>你的问题:</h3>
+            <p>{{ question }}</p>
+            <h3>AI 的回答:</h3>
+            <p>{{ answer }}</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
