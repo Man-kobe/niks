@@ -13,7 +13,7 @@ app.secret_key = 'b9f8e9f1e0d9c8a7b6f5e4d3c2b1a0'  # 这里使用生成的密钥
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(app.root_path, 'flask_session')
 app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400#Flask-Session配置
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # Flask-Session配置
 
 users = {}
 
@@ -22,21 +22,21 @@ load_dotenv()
 
 # 从环境变量中获取API密钥
 client = OpenAI(
-    api_key = "sk-oPEyNK4Iqr0Tta4jkhpsG91HgPLm0SRr62mLwxQKPfCZ3sZC",
-    base_url = "https://api.moonshot.cn/v1",
+    api_key= "sk-oPEyNK4Iqr0Tta4jkhpsG91HgPLm0SRr62mLwxQKPfCZ3sZC",
+    base_url="https://api.moonshot.cn/v1",
 )
 
 history = [
-    {"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全，有帮助，准确的回答。"}
+    {"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}
 ]
 
 # 定义提示词和相应回答
 prompts_and_responses = [
-    ("你好", "你好！很高兴认识你。我是Kimi，由 Moonshot AI 提供的人工智能助手。有什么我可以帮助你的吗？"),
-    ("我不开心", "我理解你的感受，但是请记住，无论遇到什么困难，都有解决的办法。保持积极的心态，相信自己，你会找到解决问题的方法的。"),
+    ("你好", "你好！很高兴认识你。我是Kimi，由 Moonshot AI 提供的人工智能助手。有什麽我可以帮助你的吗？"),
+    ("我不开心", "我理解你的感受，但是请记住，无论遇到什麽困难，都有解决的办法。保持积极的心态，相信自己，你会找到解决问题的办法的。"),
     ("Moonshot AI", "Moonshot AI 是一家专注于人工智能技术的公司，他们开发了我这个AI助手。"),
-    ("你能做什么", "作为一个AI助手，我可以回答问题、提供信息、协助解决问题等。但请记住，我不能替代人类的判断和专业建议。"),
-    ("再见", "再见！如果还有任何问题，随时欢迎再来询问。祝你有个愉快的一天！")
+    ("你能做什麽", "作为一个AI助手，我可以回答问题、提供信息、协助解决问题等。但是请记住，我不能替代人类的判断和专业建议。"),
+    ("再见", "再见！如果还有任何问题，随时欢迎再来咨询。祝你有个愉快的一天！")
 ]
 
 # 定义匹配提示词的函数
@@ -91,7 +91,7 @@ with app.app_context():
 @app.route('/')
 def home():
     if 'username' in session:
-        return render_template('inDex.html')
+        return render_template('index.html')
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -147,6 +147,16 @@ def qa():
 
     messages = Message.query.order_by(Message.timestamp).all()
     return render_template('qa.html', messages=messages)
+
+@app.route('/clear-chat-history', methods=['POST'])
+def clear_chat_history():
+    if 'username' in session:
+        user = User.query.filter_by(username=session['username']).first()
+        if user:
+            Message.query.delete()  # 删除所有消息记录
+            db.session.commit()
+            return {'success': True}
+    return {'success': False}
 
 if __name__ == '__main__':
     app.run(debug=True)

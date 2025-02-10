@@ -118,11 +118,35 @@
             <input type="text" id="question" name="question" required placeholder="请输入您的问题...">
             <button type="submit">提交</button>
         </form>
+        <button id="clearHistoryButton">清空对话历史</button>
     </div>
-
+    
     <script>
         document.getElementById('qaForm').addEventListener('submit', function(event) {
             document.getElementById('typing-indicator').style.display = 'flex';
+        });
+
+        document.getElementById('clearHistoryButton').addEventListener('click', function() {
+            fetch('/clear-chat-history', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId: 'current-user-id' }) // 根据需要替换成实际的用户ID
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('对话历史已清空');
+                    location.reload();  // 刷新页面以更新对话历史
+                } else {
+                    alert('清空对话历史失败');
+                }
+            })
+            .catch(error => {
+                console.error('错误:', error);
+                alert('清空对话历史时发生错误');
+            });
         });
     </script>
 </body>
