@@ -27,6 +27,7 @@
             justify-content: flex-start;
             padding: 20px;
             overflow-y: auto;
+            position: relative;
         }
         .message {
             margin: 10px 0;
@@ -34,6 +35,9 @@
             border-radius: 8px;
             max-width: 70%;
             word-wrap: break-word;
+            display: flex;
+            align-items: center;
+            position: relative;
         }
         .user-message {
             background-color: #007bff;
@@ -44,6 +48,41 @@
             background-color: #e9ecef;
             color: #333;
             align-self: flex-start;
+        }
+        .highlighted {
+            background-color: yellow;
+        }
+        .icons {
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+        }
+        .icons img {
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .star {
+            filter: grayscale(100%);
+        }
+        .star.filled {
+            filter: grayscale(0%);
+        }
+        .tag {
+            opacity: 0.5;
+        }
+        .tag.active {
+            opacity: 1;
+        }
+        .tooltip {
+            display: none;
+            position: absolute;
+            left: 100%;
+            margin-left: 10px;
+            padding: 5px;
+            background-color: #333;
+            color: white;
+            border-radius: 4px;
+            white-space: nowrap;
         }
         .typing-indicator {
             display: flex;
@@ -95,6 +134,47 @@
         .input-container button[type="submit"]:hover {
             background-color: #0056b3;
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 4px;
+            width: 300px;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+        }
+        .modal-content input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .modal-content button[type="button"] {
+            margin-top: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .modal-content button[type="button"]:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -103,8 +183,13 @@
     </div>
     <div class="container" id="chat-container">
         {% for message in messages %}
-        <div class="message {{ 'user-message' if message.sender == 'user' else 'ai-message' }}">
+        <div class="message {{ 'user-message' if message.sender == 'user' else 'ai-message' }}" data-topic="{{ message.topic }}">
+            <div class="icons">
+                <img src="{{ url_for('static', filename='star.png') }}" class="star" onclick="toggleStar(this)">
+                <img src="{{ url_for('static', filename='tag.png') }}" class="tag" onclick="showModal(this)">
+            </div>
             <p>{{ message.text }}</p>
+            <div class="tooltip"></div>
         </div>
         {% endfor %}
         <div class="message ai-message typing-indicator" id="typing-indicator" style="display: none;">
@@ -114,14 +199,100 @@
         </div>
     </div>
     <div class="input-container">
-        <form id="qaForm" action="/qa" method="post">
-            <input type="text" id="question" name="question" required placeholder="请输入您的问题...">
+        <form id="qaForm" action="/qa" method="post" autocomplete="off">
+            <input type="text" id="question" name="question" required placeholder="请输入您的问题..." autocomplete="off">
             <button type="submit">提交</button>
         </form>
         <button id="clearHistoryButton">清空对话历史</button>
     </div>
     
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2>备注标签</h2>
+            <input type="text" id="tagInput" placeholder="请输入备注...">
+            <button type="button" onclick="saveTag()">保存</button>
+        </div>
+    </div>
+
     <script>
+        const colors = ['#8B0000', '#FF0000', '#FFA500', '#FFFF00', '#006400', '#90EE90', '#ADD8E6', '#00008B', '#E6E6FA', '#800080', '#FFC0CB'];
+        let colorIndex = 0;
+
+        function toggleStar(element) {
+            element.classList.toggle('filled');
+            const messageDiv = element.closest('.message');
+            const topic = messageDiv.getAttribute('data-topic');
+
+            // Assign color to the topic if not already assigned
+            if (!messageDiv.dataset.color) {
+                const color = colors[colorIndex % colors.length];
+                colorIndex++;
+                assignColorToTopic(topic, color);
+            }
+
+            // Toggle highlighted class for all messages in the same topic
+            const messages = document.querySelectorAll(`.message[data-topic="${topic}"]`);
+            messages.forEach(msg => msg.classList.toggle('highlighted'));
+        }
+
+        function assignColorToTopic(topic, color) {
+            const messages = document.querySelectorAll(`.message[data-topic="${topic}"]`);
+            messages.forEach(msg => {
+                msg.style.backgroundColor = color;
+                msg.dataset.color = color;
+            });
+        }
+
+        function showModal(element) {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'flex';
+            
+            const messageDiv = element.closest('.message');
+            const topic = messageDiv.getAttribute('data-topic');
+            modal.setAttribute('data-topic', topic);
+        }
+
+        function saveTag() {
+            const modal = document.getElementById('modal');
+            const topic = modal.getAttribute('data-topic');
+            const tagInput = document.getElementById('tagInput');
+            const tagValue = tagInput.value;
+
+            // Save the tag to all messages in the same topic
+            const messages = document.querySelectorAll(`.message[data-topic="${topic}"]`);
+            messages.forEach(msg => {
+                const tooltip = msg.querySelector('.tooltip');
+                tooltip.textContent = tagValue;
+                tooltip.style.display = 'block';
+            });
+
+            // Close the modal
+            modal.style.display = 'none';
+            tagInput.value = '';
+        }
+
+        // Close the modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('modal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Show tooltip when hovering over message
+        document.querySelectorAll('.message').forEach(message => {
+            message.addEventListener('mouseover', function() {
+                const tooltip = this.querySelector('.tooltip');
+                if (tooltip.textContent) {
+                    tooltip.style.display = 'block';
+                }
+            });
+            message.addEventListener('mouseout', function() {
+                const tooltip = this.querySelector('.tooltip');
+                tooltip.style.display = 'none';
+            });
+        });
+
         document.getElementById('qaForm').addEventListener('submit', function(event) {
             document.getElementById('typing-indicator').style.display = 'flex';
         });

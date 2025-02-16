@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
+import time
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
@@ -27,7 +28,7 @@ client = OpenAI(
 )
 
 history = [
-    {"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}
+    {"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"},
 ]
 
 # 定义提示词和相应回答
@@ -55,12 +56,23 @@ def chat(query, history):
         return matched_response
 
     history.append({"role": "user", "content": query})
-    completion = client.chat.completions.create(
-        model="moonshot-v1-8k",
-        messages=history,
-        temperature=0.3,
-        stream=True
-    )
+    
+    retry_attempts = 3
+    for attempt in range(retry_attempts):
+        try:
+            completion = client.chat.completions.create(
+                model="moonshot-v1-8k",
+                messages=history,
+                temperature=0.3,
+                stream=True,
+                timeout=60  # 增加超时时间为60秒
+            )
+            break
+        except RateLimitError as e:
+            if attempt < retry_attempts - 1:
+                time.sleep(2)  # 等待2秒后重试
+            else:
+                return "请求超时，请稍后再试。"
 
     result = ""
     for chunk in completion:

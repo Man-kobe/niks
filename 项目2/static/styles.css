@@ -48,3 +48,19 @@ p {
     text-align: center;
     margin-top: 20px;
 }
+
+/* 新增按钮样式 */
+.button-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.button-container button {
+    width: 48%; /* 增加按钮宽度 */
+    background-color: white; /* 按钮颜色设为白色 */
+    color: black; /* 文字颜色 */
+    border: 1px solid black; /* 边框颜色 */
+    padding: 10px; /* 内边距 */
+    margin: 0; /* 移除外边距 */
+    cursor: pointer; /* 鼠标样式 */
+}
