@@ -27,9 +27,11 @@ client = OpenAI(
     base_url="https://api.moonshot.cn/v1",
 )
 
-history = [
-    {"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"},
-]
+history = {
+    "default": [
+        {"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}
+    ]
+}
 
 # 定义提示词和相应回答
 prompts_and_responses = [
@@ -95,6 +97,7 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sender = db.Column(db.String(80), nullable=False)
     text = db.Column(db.Text, nullable=False)
+    topic = db.Column(db.String(120), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 with app.app_context():
@@ -149,16 +152,21 @@ def logout():
 def qa():
     if request.method == 'POST':
         question = request.form['question']
-        answer = chat(question, history)
-        user_message = Message(sender='user', text=question)
-        ai_message = Message(sender='ai', text=answer)
+        topic = request.form['topic']
+        if topic not in history:
+            history[topic] = [{"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}]
+        answer = chat(question, history[topic])
+        user_message = Message(sender='user', text=question, topic=topic)
+        ai_message = Message(sender='ai', text=answer, topic=topic)
         db.session.add(user_message)
         db.session.add(ai_message)
         db.session.commit()
-        return redirect(url_for('qa'))
+        return redirect(url_for('qa', topic=topic))
 
-    messages = Message.query.order_by(Message.timestamp).all()
-    return render_template('qa.html', messages=messages)
+    topic = request.args.get('topic', 'default')
+    messages = Message.query.filter_by(topic=topic).order_by(Message.timestamp).all()
+    topics = Message.query.with_entities(Message.topic).distinct().all()
+    return render_template('qa.html', messages=messages, topics=topics, current_topic=topic)
 
 @app.route('/clear-chat-history', methods=['POST'])
 def clear_chat_history():

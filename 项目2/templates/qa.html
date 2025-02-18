@@ -182,6 +182,16 @@
         <h2>问答系统</h2>
     </div>
     <div class="container" id="chat-container">
+        <div class="topic-selector">
+            <form id="topicForm" action="/qa" method="get">
+                <label for="topic">选择话题:</label>
+                <select id="topic" name="topic" onchange="this.form.submit()">
+                    {% for topic in topics %}
+                        <option value="{{ topic[0] }}" {% if topic[0] == current_topic %}selected{% endif %}>{{ topic[0] }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
         {% for message in messages %}
         <div class="message {{ 'user-message' if message.sender == 'user' else 'ai-message' }}" data-topic="{{ message.topic }}">
             <div class="icons">
@@ -200,12 +210,12 @@
     </div>
     <div class="input-container">
         <form id="qaForm" action="/qa" method="post" autocomplete="off">
+            <input type="hidden" name="topic" value="{{ current_topic }}">
             <input type="text" id="question" name="question" required placeholder="请输入您的问题..." autocomplete="off">
             <button type="submit">提交</button>
         </form>
         <button id="clearHistoryButton">清空对话历史</button>
     </div>
-    
     <div class="modal" id="modal">
         <div class="modal-content">
             <h2>备注标签</h2>
@@ -213,7 +223,6 @@
             <button type="button" onclick="saveTag()">保存</button>
         </div>
     </div>
-
     <script>
         const colors = ['#8B0000', '#FF0000', '#FFA500', '#FFFF00', '#006400', '#90EE90', '#ADD8E6', '#00008B', '#E6E6FA', '#800080', '#FFC0CB'];
         let colorIndex = 0;
