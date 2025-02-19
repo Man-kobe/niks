@@ -7,14 +7,14 @@ from flask_session import Session
 import time
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/sqlite/mydatabase.db'  # 确保路径正确
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'b9f8e9f1e0d9c8a7b6f5e4d3c2b1a0'  # 这里使用生成的密钥
+app.secret_key = 'b9f8e9f1e0d9c8a7b6f5e4d3c2b1a0'
 
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(app.root_path, 'flask_session')
 app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # Flask-Session配置
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400
 
 users = {}
 
