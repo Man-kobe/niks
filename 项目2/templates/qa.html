@@ -223,27 +223,31 @@
             <button type="button" onclick="saveTag()">保存</button>
         </div>
     </div>
+<!-- 在现有 JavaScript 代码部分添加新的函数 -->
     <script>
+        // 颜色数组和索引
         const colors = ['#8B0000', '#FF0000', '#FFA500', '#FFFF00', '#006400', '#90EE90', '#ADD8E6', '#00008B', '#E6E6FA', '#800080', '#FFC0CB'];
         let colorIndex = 0;
 
+        // 切换星标功能
         function toggleStar(element) {
             element.classList.toggle('filled');
             const messageDiv = element.closest('.message');
             const topic = messageDiv.getAttribute('data-topic');
 
-            // Assign color to the topic if not already assigned
+            // 如果尚未分配颜色，则为主题分配颜色
             if (!messageDiv.dataset.color) {
                 const color = colors[colorIndex % colors.length];
                 colorIndex++;
                 assignColorToTopic(topic, color);
             }
 
-            // Toggle highlighted class for all messages in the same topic
+            // 为相同主题的所有消息切换高亮类
             const messages = document.querySelectorAll(`.message[data-topic="${topic}"]`);
             messages.forEach(msg => msg.classList.toggle('highlighted'));
         }
 
+        // 为主题分配颜色
         function assignColorToTopic(topic, color) {
             const messages = document.querySelectorAll(`.message[data-topic="${topic}"]`);
             messages.forEach(msg => {
@@ -252,6 +256,7 @@
             });
         }
 
+        // 显示模态框
         function showModal(element) {
             const modal = document.getElementById('modal');
             modal.style.display = 'flex';
@@ -261,13 +266,14 @@
             modal.setAttribute('data-topic', topic);
         }
 
+        // 保存标签
         function saveTag() {
             const modal = document.getElementById('modal');
             const topic = modal.getAttribute('data-topic');
             const tagInput = document.getElementById('tagInput');
             const tagValue = tagInput.value;
 
-            // Save the tag to all messages in the same topic
+            // 保存相同主题的所有消息的标签
             const messages = document.querySelectorAll(`.message[data-topic="${topic}"]`);
             messages.forEach(msg => {
                 const tooltip = msg.querySelector('.tooltip');
@@ -275,12 +281,12 @@
                 tooltip.style.display = 'block';
             });
 
-            // Close the modal
+            // 关闭模态框
             modal.style.display = 'none';
             tagInput.value = '';
         }
 
-        // Close the modal when clicking outside of it
+        // 点击外部关闭模态框
         window.onclick = function(event) {
             const modal = document.getElementById('modal');
             if (event.target == modal) {
@@ -288,7 +294,7 @@
             }
         }
 
-        // Show tooltip when hovering over message
+        // 悬停显示提示
         document.querySelectorAll('.message').forEach(message => {
             message.addEventListener('mouseover', function() {
                 const tooltip = this.querySelector('.tooltip');
@@ -302,10 +308,12 @@
             });
         });
 
+        // 提交时显示打字指示器
         document.getElementById('qaForm').addEventListener('submit', function(event) {
             document.getElementById('typing-indicator').style.display = 'flex';
         });
 
+        // 清空对话历史
         document.getElementById('clearHistoryButton').addEventListener('click', function() {
             fetch('/clear-chat-history', {
                 method: 'POST',
