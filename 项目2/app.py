@@ -7,16 +7,13 @@ from flask_session import Session
 import time
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/sqlite/mydatabase.db'  # 确保路径正确
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/sqlite/mydatabase.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'b9f8e9f1e0d9c8a7b6f5e4d3c2b1a0'
-
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(app.root_path, 'flask_session')
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400
-
-users = {}
 
 # 加载 .env 文件
 load_dotenv()
@@ -27,16 +24,11 @@ client = OpenAI(
     base_url="https://api.moonshot.cn/v1",
 )
 
+
 history = {
-    "default": [
-        {"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"},
-    ],
-    "人物": [
-        {"role": "system", "content": "这是一个关于人物及其亲友事迹的对话话题。"},
-    ],
-    "Math": [
-        {"role": "system", "content": "这是一个关于数学内容的对话话题，包括数学题、计算、公式作图等。"},
-    ]
+    "default": [{"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}],
+    "人物": [{"role": "system", "content": "这是一个关于人物及其亲友事迹的对话话题。"}],
+    "Math": [{"role": "system", "content": "这是一个关于数学内容的对话话题，包括数学题、计算、公式作图等。"}]
 }
 
 # 定义提示词和相应回答
@@ -73,20 +65,16 @@ def chat(query, history):
                 messages=history,
                 temperature=0.3,
                 stream=True,
-                timeout=60  # 增加超时时间为60秒
+                timeout=60
             )
             break
-        except RateLimitError as e:
+        except RateLimitError:
             if attempt < retry_attempts - 1:
-                time.sleep(2)  # 等待2秒后重试
+                time.sleep(2)
             else:
                 return "请求超时，请稍后再试。"
 
-    result = ""
-    for chunk in completion:
-        if chunk.choices[0].delta.content:
-            content = chunk.choices[0].delta.content
-            result += content
+    result = "".join(chunk.choices[0].delta.content for chunk in completion if chunk.choices[0].delta.content)
 
     history.append({"role": "assistant", "content": result})
     return result
@@ -111,9 +99,7 @@ with app.app_context():
 
 @app.route('/')
 def home():
-    if 'username' in session:
-        return render_template('index.html')
-    return redirect(url_for('login'))
+    return render_template('index.html') if 'username' in session else redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -142,8 +128,8 @@ def login():
         user = User.query.filter_by(username=username, password=password).first()
         if user:
             session['username'] = username
-            session['messages'] = []  # 初始化会话中的消息列表
-            session.permanent = True  # 使用永久会话
+            session['messages'] = []
+            session.permanent = True
             return redirect(url_for('home'))
         return 'Invalid username or password'
 
@@ -162,10 +148,8 @@ def qa():
         if topic not in history:
             history[topic] = [{"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}]
         answer = chat(question, history[topic])
-        user_message = Message(sender='user', text=question, topic=topic)
-        ai_message = Message(sender='ai', text=answer, topic=topic)
-        db.session.add(user_message)
-        db.session.add(ai_message)
+        db.session.add(Message(sender='user', text=question, topic=topic))
+        db.session.add(Message(sender='ai', text=answer, topic=topic))
         db.session.commit()
         return redirect(url_for('qa', topic=topic))
 
@@ -179,10 +163,13 @@ def clear_chat_history():
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
         if user:
-            Message.query.delete()  # 删除所有消息记录
-            db.session.commit()
-            return {'success': True}
-    return {'success': False}
+            try:
+                Message.query.delete()
+                db.session.commit()
+                return {'success': True}
+            except Exception as e:
+                return {'success': False, 'error': str(e)}
+    return {'success': False, 'error': 'User not logged in'}
 
 if __name__ == '__main__':
     app.run(debug=True)
