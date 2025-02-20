@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import os
 from dotenv import load_dotenv
 from openai import OpenAI, RateLimitError
@@ -24,7 +24,9 @@ client = OpenAI(
     base_url="https://api.moonshot.cn/v1",
 )
 
-
+chat_history = {
+    'current-user-id': []
+}
 history = {
     "default": [{"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}],
     "人物": [{"role": "system", "content": "这是一个关于人物及其亲友事迹的对话话题。"}],
@@ -160,16 +162,14 @@ def qa():
 
 @app.route('/clear-chat-history', methods=['POST'])
 def clear_chat_history():
-    if 'username' in session:
-        user = User.query.filter_by(username=session['username']).first()
-        if user:
-            try:
-                Message.query.delete()
-                db.session.commit()
-                return {'success': True}
-            except Exception as e:
-                return {'success': False, 'error': str(e)}
-    return {'success': False, 'error': 'User not logged in'}
+    data = request.get_json()
+    user_id = data.get('userId')
+    
+    if user_id and user_id in chat_history:
+        chat_history[user_id] = []
+        return jsonify(success=True)
+    else:
+        return jsonify(success=False), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
