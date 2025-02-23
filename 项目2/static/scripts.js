@@ -1,4 +1,3 @@
-
 const colors = ['#8B0000', '#FF0000', '#FFA500', '#FFFF00', '#006400', '#90EE90', '#ADD8E6', '#00008B', '#E6E6FA', '#800080', '#FFC0CB'];
 let colorIndex = 0;
 
