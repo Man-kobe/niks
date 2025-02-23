@@ -98,7 +98,7 @@ document.getElementById('clearHistoryButton').addEventListener('click', function
     .then(data => {
         if (data.success) {
             alert('对话历史已清空');
-            location.reload();  // 刷新页面以更新对话历史
+            document.getElementById('messages').innerHTML = '';  // 清空对话框内容
         } else {
             alert('清空对话历史失败');
         }

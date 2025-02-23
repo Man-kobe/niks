@@ -5,6 +5,8 @@ from openai import OpenAI, RateLimitError
 from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
 import time
+import re
+import random
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/sqlite/mydatabase.db'
@@ -29,8 +31,7 @@ chat_history = {
 }
 history = {
     "default": [{"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}],
-    "人物": [{"role": "system", "content": "这是一个关于人物及其亲友事迹的对话话题。"}],
-    "Math": [{"role": "system", "content": "这是一个关于数学内容的对话话题，包括数学题、计算、公式作图等。"}]
+    "数字": [{"role": "system", "content": "这是一个关于数学问题和数学公式的对话话题。"}],
 }
 
 # 定义提示词和相应回答
@@ -42,6 +43,17 @@ prompts_and_responses = [
     ("再见", "再见！如果还有任何问题，随时欢迎再来咨询。祝你有个愉快的一天！")
 ]
 
+# 检测数学问题的正则表达式
+math_pattern = re.compile(r"\b(?:\d+\.?\d*|\.\d+|[+\-*/^=()])+\b")
+
+# 检测人名的简单规则（可以根据需要调整）
+def extract_person_name(query):
+    words = query.split()
+    for i in range(len(words) - 1):
+        if words[i].istitle() and words[i + 1].istitle():
+            return f"{words[i]} {words[i + 1]}"
+    return None
+
 # 定义匹配提示词的函数
 def match_prompt(user_input):
     for prompt, response in prompts_and_responses:
@@ -50,21 +62,34 @@ def match_prompt(user_input):
     return None
 
 # 定义 chat 函数
-def chat(query, history):
+def chat(query):
+    topic = "default"
+    person_name = extract_person_name(query)
+    if re.search(math_pattern, query):
+        topic = "数字"
+    elif person_name:
+        topic = person_name
+        if not Topic.query.filter_by(name=topic).first():
+            new_topic = Topic(name=topic, color=get_random_color())
+            db.session.add(new_topic)
+            db.session.commit()
+        if topic not in history:
+            history[topic] = [{"role": "system", "content": f"这是一个关于{person_name}的对话话题。"}]
+
     matched_response = match_prompt(query)
     if matched_response:
-        history.append({"role": "user", "content": query})
-        history.append({"role": "assistant", "content": matched_response})
-        return matched_response
+        history[topic].append({"role": "user", "content": query})
+        history[topic].append({"role": "assistant", "content": matched_response})
+        return matched_response, topic
 
-    history.append({"role": "user", "content": query})
+    history[topic].append({"role": "user", "content": query})
     
     retry_attempts = 3
     for attempt in range(retry_attempts):
         try:
             completion = client.chat.completions.create(
                 model="moonshot-v1-8k",
-                messages=history,
+                messages=history[topic],
                 temperature=0.3,
                 stream=True,
                 timeout=60
@@ -74,12 +99,16 @@ def chat(query, history):
             if attempt < retry_attempts - 1:
                 time.sleep(2)
             else:
-                return "请求超时，请稍后再试。"
+                return "请求超时，请稍后再试。", topic
 
     result = "".join(chunk.choices[0].delta.content for chunk in completion if chunk.choices[0].delta.content)
 
-    history.append({"role": "assistant", "content": result})
-    return result
+    history[topic].append({"role": "assistant", "content": result})
+    return result, topic
+
+def get_random_color():
+    colors = ['#8B0000', '#FF0000', '#FFA500', '#FFFF00', '#006400', '#90EE90', '#ADD8E6', '#00008B', '#E6E6FA', '#800080', '#FFC0CB']
+    return random.choice(colors)
 
 db = SQLAlchemy(app)
 Session(app)
@@ -95,6 +124,11 @@ class Message(db.Model):
     text = db.Column(db.Text, nullable=False)
     topic = db.Column(db.String(120), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+class Topic(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), unique=True, nullable=False)
+    color = db.Column(db.String(7), nullable=False)
 
 with app.app_context():
     db.create_all()
@@ -146,10 +180,7 @@ def logout():
 def qa():
     if request.method == 'POST':
         question = request.form['question']
-        topic = request.form['topic']
-        if topic not in history:
-            history[topic] = [{"role": "system", "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手，你更擅长中文和英文的对话。你会为用户提供安全、有帮助、准确的回答。"}]
-        answer = chat(question, history[topic])
+        answer, topic = chat(question)
         db.session.add(Message(sender='user', text=question, topic=topic))
         db.session.add(Message(sender='ai', text=answer, topic=topic))
         db.session.commit()
@@ -157,7 +188,7 @@ def qa():
 
     topic = request.args.get('topic', 'default')
     messages = Message.query.filter_by(topic=topic).order_by(Message.timestamp).all()
-    topics = Message.query.with_entities(Message.topic).distinct().all()
+    topics = Topic.query.all()
     return render_template('qa.html', messages=messages, topics=topics, current_topic=topic)
 
 @app.route('/clear-chat-history', methods=['POST'])
@@ -167,6 +198,8 @@ def clear_chat_history():
     
     if user_id and user_id in chat_history:
         chat_history[user_id] = []
+        db.session.query(Message).delete()
+        db.session.commit()
         return jsonify(success=True)
     else:
         return jsonify(success=False), 400

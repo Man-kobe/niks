@@ -21,16 +21,18 @@
                 </select>
             </form>
         </div>
-        {% for message in messages %}
-        <div class="message {{ 'user-message' if message.sender == 'user' else 'ai-message' }}" data-topic="{{ message.topic }}">
-            <div class="icons">
-                <img src="{{ url_for('static', filename='star.png') }}" class="star" onclick="toggleStar(this)">
-                <img src="{{ url_for('static', filename='tag.png') }}" class="tag" onclick="showModal(this)">
+        <div id="messages">
+            {% for message in messages %}
+            <div class="message {{ 'user-message' if message.sender == 'user' else 'ai-message' }}" data-topic="{{ message.topic }}">
+                <div class="icons">
+                    <img src="{{ url_for('static', filename='star.png') }}" class="star" onclick="toggleStar(this)">
+                    <img src="{{ url_for('static', filename='tag.png') }}" class="tag" onclick="showModal(this)">
+                </div>
+                <p>{{ message.text }}</p>
+                <div class="tooltip"></div>
             </div>
-            <p>{{ message.text }}</p>
-            <div class="tooltip"></div>
+            {% endfor %}
         </div>
-        {% endfor %}
         <div class="message ai-message typing-indicator" id="typing-indicator" style="display: none;">
             <div></div>
             <div></div>
